@@ -19,15 +19,15 @@ Order of operations:
 
 from pathlib import Path
 
-from src.normalize import (
+from task1_data_pipeline.src.normalize import (
     normalize_email, normalize_phone, normalize_city, parse_date,
     normalize_ctc, normalize_rate, normalize_status, normalize_verified,
 )
-from src.ingest.load_csv import load_all_sources
-from src.matching.grouping import SourceRecord, group_within_source, Cluster
-from src.matching.linking import link_by_email, link_by_phone
-from src.matching.review import ExistingPerson, resolve_review_outcome
-from src.db.db import (
+from task1_data_pipeline.src.ingest.load_csv import load_all_sources
+from task1_data_pipeline.src.matching.grouping import SourceRecord, group_within_source, Cluster
+from task1_data_pipeline.src.matching.linking import link_by_email, link_by_phone
+from task1_data_pipeline.src.matching.review import ExistingPerson, resolve_review_outcome
+from task1_data_pipeline.src.db.db import (
     reset_database, insert_quarantine_record, insert_source_record,
     insert_person, link_record_to_person, insert_match_log,
 )

@@ -14,9 +14,18 @@ env/
 *.sqlite3
 
 # Generated files
-data/output/
-data/processed/
+Data/output/
+Data/processed/
+task1_data_pipeline/Data/output/
+task1_data_pipeline/Data/processed/
 *.log
+
+# Task 3 audio app
+task3_audio_app/audio_files/
+task3_audio_app/**/*.wav
+task3_audio_app/**/*.mp3
+task3_audio_app/**/*.m4a
+task3_audio_app/**/*.webm
 
 # IDE
 .vscode/
@@ -28,3 +37,4 @@ Thumbs.db
 
 # Assignment data
 data/raw/*.csv
+task1_data_pipeline/Data/raw/*.csv
