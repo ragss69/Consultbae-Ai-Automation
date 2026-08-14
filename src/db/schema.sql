@@ -39,6 +39,7 @@ CREATE TABLE source_records (
     -- Normalized values (see src/normalize.py)
     normalized_email        TEXT,
     normalized_phone         TEXT,
+    phone_parse_status   TEXT,   -- 'ok' | 'scientific_notation_corrupted' | 'too_short_unparseable' | NULL
     normalized_city          TEXT,
     match_region             TEXT,
 

@@ -281,3 +281,29 @@ def normalize_verified(raw_verified: str | None) -> bool | None:
     if cleaned in ("n", "no"):
         return False
     return None
+
+
+import re
+
+_SCI_NOTATION_RE = re.compile(r'^-?\d+(\.\d+)?[eE][+-]?\d+$')
+
+def normalize_phone(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    raw = str(raw).strip()
+    if not raw:
+        return None
+
+    if _SCI_NOTATION_RE.match(raw):
+        # Phone number was corrupted into scientific notation -- almost
+        # certainly Excel auto-formatting a long digit string as a number.
+        # The original digits are IRRECOVERABLE (e.g. "9E+09" could be any
+        # ~10-digit number starting with 9). Do not attempt to reconstruct
+        # digits from this: doing so risks fabricating a phone number that
+        # could coincidentally collide with someone else's real number.
+        return None
+
+    digits = re.sub(r"\D", "", raw)
+    if len(digits) < 10:
+        return None
+    return digits[-10:]
