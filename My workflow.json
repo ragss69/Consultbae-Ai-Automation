@@ -1,0 +1,910 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        144
+      ],
+      "id": "4725ca81-797b-49ce-8505-9a717ca88722",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0",
+          "mode": "list",
+          "cachedResultName": "Consultbae Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "ConsultBae_Persons",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        240
+      ],
+      "id": "941eab7b-09d3-4c54-bcc0-8da42c4d30ba",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a88dsCNsrHSY6awd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0",
+          "mode": "list",
+          "cachedResultName": "Consultbae Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 521084837,
+          "mode": "list",
+          "cachedResultName": "ConsultBae_Persons_Tagged",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0/edit#gid=521084837"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        48
+      ],
+      "id": "0a2f63f1-0d54-498f-8624-675926eb5ca8",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a88dsCNsrHSY6awd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "person_id",
+              "field2": "person_id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.compareDatasets",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        112
+      ],
+      "id": "c551bf22-ade6-408b-8226-3e9b2527f017",
+      "name": "Compare Datasets"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        672,
+        144
+      ],
+      "id": "1b5d94c8-ebaa-4645-b9b7-3e06d5c58db6",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "540be7e2-4b53-46d7-bba9-95eb3262c45d",
+              "leftValue": "={{ $json.skills_raw }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "8e478ccb-14aa-4dee-81b1-bd4b2c4f5738",
+              "leftValue": "={{ $json.skills_raw }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        32
+      ],
+      "id": "8a648c30-dd96-4b42-a54d-aed5fb58c692",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are classifying a person's professional skill set into exactly one category.\n\nCategories and definitions:\n- Web Development: frontend, backend, APIs, web frameworks, application development\n- Data / Analytics: SQL, Pandas, statistics, reporting, data engineering, analytics\n- Automation / AI: n8n, Zapier, workflow automation, AI, machine learning, LangChain\n- Design: UI/UX, Figma, Adobe tools, visual design, branding\n- Sales / Ops / Support: sales, customer support, CRM, recruiting, operations\n- Other: insufficient, unrelated, or unclear evidence\n\nSkills: {{ $json.skills_raw }}\n\nChoose the category that best represents the DOMINANT theme of the overall skill list, not just one matching keyword. Reply with only the exact category text from the list above, nothing else — no punctuation, no explanation.\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        144
+      ],
+      "id": "5253135a-50fb-4a9b-b72a-c0818ab620a0",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "G2dSQ20VzDaBM3FT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3dd91ac9-5440-4100-bf70-6790b297bba6",
+              "name": "Gemini_Output",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "e61a1184-7a21-40f4-b46e-1a820bb3e343",
+              "name": "gemini_output_normalized",
+              "value": "={{ $json.content.parts[0].text.trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "e7377227-3d2a-42db-923c-1265d3c1ad6b",
+              "name": "person_id",
+              "value": "={{ $('If').item.json.person_id }}",
+              "type": "string"
+            },
+            {
+              "id": "bd6d430e-9974-403d-928d-f16cfde35181",
+              "name": "display_name",
+              "value": "={{ $('If').item.json.display_name }}",
+              "type": "string"
+            },
+            {
+              "id": "b3b9a907-7545-4791-a6b6-c4e339c30093",
+              "name": "city",
+              "value": "={{ $('If').item.json.city }}",
+              "type": "string"
+            },
+            {
+              "id": "762355c8-cc1c-43b7-bee6-a9be8e7438a2",
+              "name": "primary_phone",
+              "value": "={{ $('If').item.json.primary_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "546c77a6-1d1e-4156-88f9-ee5023ce39b2",
+              "name": "primary_email",
+              "value": "={{ $('If').item.json.primary_email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1472,
+        144
+      ],
+      "id": "093b660e-ee3b-49d3-8173-4edcbab65859",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.gemini_output_normalized }}",
+                    "rightValue": "Web Development",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cc4cdff1-5c92-4417-806f-8b7364fc2ea7"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "61b4e4a6-69be-42f0-8cd8-d6ecdc44c4a8",
+                    "leftValue": "={{ $json.gemini_output_normalized }}",
+                    "rightValue": "Automation / AI",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "15c78f74-aba8-48ad-b50d-9f90a18a1725",
+                    "leftValue": "={{ $json.gemini_output_normalized }}",
+                    "rightValue": "Data / Analytics",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8119d758-ad19-487c-bf50-7a52712f3aae",
+                    "leftValue": "={{ $json.gemini_output_normalized }}",
+                    "rightValue": "Design",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9bcc0f86-fb25-45aa-b56c-fc6bafe85d2b",
+                    "leftValue": "={{ $json.gemini_output_normalized }}",
+                    "rightValue": "Sales / Ops / Support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "623b1ee8-3454-4215-bda7-6d878cc1e434",
+                    "leftValue": "={{ $json.gemini_output_normalized }}",
+                    "rightValue": "Other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1696,
+        64
+      ],
+      "id": "d5248bce-0554-4925-a2d8-79a06babdde0",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f0c30828-a0c3-426b-abad-0074c0bf4e32",
+              "name": "skill_category",
+              "value": "={{ $json.gemini_output_normalized }}",
+              "type": "string"
+            },
+            {
+              "id": "d09d6e13-6b5d-41e6-9994-0b8a2d36302b",
+              "name": "classification_status",
+              "value": "valid",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        48
+      ],
+      "id": "1cf18cef-195e-419c-8d78-eb76e3b93b1b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87e11d90-7ceb-4035-9f6b-2495745366d2",
+              "name": "skill_category",
+              "value": "={{ $json.gemini_output }}",
+              "type": "string"
+            },
+            {
+              "id": "d94db68c-de74-435f-b0e4-a572ff7f701a",
+              "name": "classification_status",
+              "value": "invalid_model_output",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        240
+      ],
+      "id": "f2ddc09a-01a5-4610-b06f-de957c8b9b0b",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2144,
+        32
+      ],
+      "id": "a97abd9b-67cf-4cfc-a970-1cd5d502b7bf",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "944c6c6d-72e8-4f82-be25-c834507dcfe7",
+              "name": "skill_category",
+              "value": "Other",
+              "type": "string"
+            },
+            {
+              "id": "881d8caa-beee-4436-9457-3c1993e7ce75",
+              "name": "classification_status",
+              "value": "missing_skills",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1920,
+        -160
+      ],
+      "id": "6270c295-1272-4044-b102-cb8000106788",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28957794-f6a7-4991-92e4-f74fee4fe38d",
+              "name": "classified_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "1d684bb4-f791-497d-97db-c33c4a454dcd",
+              "name": "workflow_run_id",
+              "value": "={{ $workflow.id }}-{{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "035d4b0f-2470-42a9-b107-4b9b87d1278c",
+              "name": "skills_raw",
+              "value": "={{ $('If').item.json.skills_raw }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2368,
+        48
+      ],
+      "id": "590d9e12-51e1-4e55-a656-5e9812834d56",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0",
+          "mode": "list",
+          "cachedResultName": "Consultbae Automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 521084837,
+          "mode": "list",
+          "cachedResultName": "ConsultBae_Persons_Tagged",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1gf30RKuKfRvsN9gB_AxB7D7yw3RXkmATQCJSnnFBBd0/edit#gid=521084837"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "person_id": "={{ $json.person_id }}",
+            "display_name": "={{ $json.display_name }}",
+            "primary_email": "={{ $json.primary_email }}",
+            "skills_raw": "={{ $json.skills_raw }}",
+            "primary_phone": "={{ $json.primary_phone }}",
+            "city": "={{ $json.city }}",
+            "tagged_skill": "={{ $json.skill_category }}"
+          },
+          "matchingColumns": [
+            "person_id"
+          ],
+          "schema": [
+            {
+              "id": "person_id",
+              "displayName": "person_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "display_name",
+              "displayName": "display_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "primary_email",
+              "displayName": "primary_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "primary_phone",
+              "displayName": "primary_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "skills_raw",
+              "displayName": "skills_raw",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tagged_skill",
+              "displayName": "tagged_skill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2592,
+        256
+      ],
+      "id": "31fbedbf-29b4-407d-b224-9adc09d567df",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "a88dsCNsrHSY6awd",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Compare Datasets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Compare Datasets",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Compare Datasets": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d656afc7-8c4e-47fc-bd76-6b6c38c89ade",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b92a2b9b023c8fe5e7c89e2810da2d9b77d3f61a57457ece4c46cafec93147dc"
+  },
+  "nodeGroups": [],
+  "id": "g6RnifEGITFX408L",
+  "tags": []
+}
