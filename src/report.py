@@ -53,7 +53,7 @@ def export_review_queue(conn) -> int:
     query = """
         SELECT
             ml.match_id, sr.source_name, sr.source_row_index, sr.raw_name,
-            sr.raw_email, sr.raw_phone, sr.raw_city,
+            sr.raw_email, sr.raw_phone, sr.raw_city, sr.phone_parse_status,
             ml.outcome, ml.match_method, ml.evidence
         FROM match_log ml
         JOIN source_records sr ON sr.record_id = ml.record_id

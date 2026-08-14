@@ -287,23 +287,35 @@ import re
 
 _SCI_NOTATION_RE = re.compile(r'^-?\d+(\.\d+)?[eE][+-]?\d+$')
 
-def normalize_phone(raw: str | None) -> str | None:
+
+def normalize_phone(raw: str | None) -> tuple[str | None, str]:
+    """
+    Returns (normalized_phone, phone_parse_status).
+
+    phone_parse_status is one of:
+      'ok'                          -- parsed to a clean 10-digit number
+      'missing'                     -- raw value was empty/None
+      'scientific_notation_corrupted' -- Excel mangled the number; digits
+                                          are irrecoverable, never guessed
+      'too_short_unparseable'       -- fewer than 10 digits after cleanup
+    """
     if raw is None:
-        return None
+        return None, "missing"
+
     raw = str(raw).strip()
     if not raw:
-        return None
+        return None, "missing"
 
     if _SCI_NOTATION_RE.match(raw):
-        # Phone number was corrupted into scientific notation -- almost
-        # certainly Excel auto-formatting a long digit string as a number.
-        # The original digits are IRRECOVERABLE (e.g. "9E+09" could be any
-        # ~10-digit number starting with 9). Do not attempt to reconstruct
-        # digits from this: doing so risks fabricating a phone number that
-        # could coincidentally collide with someone else's real number.
-        return None
+        # e.g. "9E+09", "9.19E+11", "-9E+09" -- original digits are
+        # permanently lost once Excel reformats a long digit string as a
+        # number. Do NOT attempt to reconstruct digits: that risks
+        # fabricating a phone number that could coincidentally collide
+        # with someone else's real number.
+        return None, "scientific_notation_corrupted"
 
     digits = re.sub(r"\D", "", raw)
     if len(digits) < 10:
-        return None
-    return digits[-10:]
+        return None, "too_short_unparseable"
+
+    return digits[-10:], "ok"

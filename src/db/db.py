@@ -45,15 +45,42 @@ def insert_quarantine_record(conn: sqlite3.Connection, *, source_name: str,
     return cur.lastrowid
 
 
-def insert_source_record(conn: sqlite3.Connection, fields: dict) -> int:
-    """fields keys must be a subset of source_records columns (excluding record_id)."""
-    columns = ", ".join(fields.keys())
-    placeholders = ", ".join("?" for _ in fields)
-    cur = conn.execute(
-        f"INSERT INTO source_records ({columns}) VALUES ({placeholders})",
-        tuple(fields.values()),
+def insert_source_record(conn, fields: dict) -> int:
+    """
+    Insert one row into source_records. `fields` is the db_fields dict built
+    by pipeline.py's build_naukri_records / build_gig_worker_records /
+    build_cbnexus_records. Since each source only populates a subset of
+    columns (e.g. Naukri has no rate_raw, Gig Worker has no ctc_raw),
+    every column is pulled with .get(...) so missing ones are stored as
+    NULL rather than raising a KeyError.
+
+    Returns the new record_id (needed by pipeline.py to build record_id_map
+    for later match_log inserts).
+    """
+    columns = [
+        "source_name", "source_row_index",
+        "raw_name", "raw_email", "raw_phone", "raw_city",
+        "normalized_email", "normalized_phone", "phone_parse_status",
+        "normalized_city", "match_region",
+        "experience_years",
+        "ctc_raw", "ctc_normalized_inr", "ctc_unit_assumed",
+        "applied_date_raw", "applied_date_normalized", "date_parse_status",
+        "skills_raw",
+        "rate_raw", "rate_normalized_monthly_inr", "rate_unit_assumed",
+        "status_normalized", "skill_tags_raw",
+        "verified_normalized", "projects_completed",
+    ]
+
+    values = [fields.get(col) for col in columns]
+    placeholders = ", ".join(["?"] * len(columns))
+    column_list = ", ".join(columns)
+
+    cursor = conn.execute(
+        f"INSERT INTO source_records ({column_list}) VALUES ({placeholders})",
+        values,
     )
-    return cur.lastrowid
+    return cursor.lastrowid
+
 
 
 def insert_person(conn: sqlite3.Connection, *, display_name: str, primary_email: str | None,

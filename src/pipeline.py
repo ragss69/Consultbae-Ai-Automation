@@ -10,12 +10,10 @@ Order of operations:
   4. Group Naukri records into intra-source clusters, detect conflicts (grouping.py).
   5. Create a person per safe Naukri cluster (the identity bridge).
   6. Link Gig Worker (by email) and CBNexus (by phone) records against those
-     persons (linking.py).
-  7. For anything left unresolved, run name+city review candidate generation
-     (review.py) against persons created so far.
-  8. Group Gig Worker / CBNexus records among THEMSELVES too (they can have
-     their own intra-source duplicates independent of Naukri).
-  9. Write everything to source_records, persons, match_log; write
+     persons (linking.py). Anything that doesn't match a Naukri person tries
+     name+city review (review.py) against persons created so far, then
+     either becomes a new provisional person or is left in the review queue.
+  7. Write everything to source_records, persons, match_log; write
      quarantine_records. Print a validation summary.
 """
 
@@ -48,7 +46,7 @@ def build_naukri_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]]:
     out = []
     for row in rows:
         email = normalize_email(row.get("Email"))
-        phone = normalize_phone(row.get("Phone"))
+        phone, phone_parse_status = normalize_phone(row.get("Phone"))
         city_info = normalize_city(row.get("City"))
         date_info = parse_date(row.get("Applied Date"))
         ctc_info = normalize_ctc(row.get("Current CTC"))
@@ -70,6 +68,7 @@ def build_naukri_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]]:
             "raw_city": row.get("City"),
             "normalized_email": email,
             "normalized_phone": phone,
+            "phone_parse_status": phone_parse_status,
             "normalized_city": city_info["normalized_city"],
             "match_region": city_info["match_region"],
             "experience_years": _to_float(row.get("Experience (Years)")),
@@ -89,6 +88,10 @@ def build_gig_worker_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]
     out = []
     for row in rows:
         email = normalize_email(row.get("email_id"))
+        # This source has no phone column at all. Running None through the
+        # same normalizer keeps behaviour consistent and gives an explicit
+        # phone_parse_status="missing" rather than an unexplained NULL.
+        _, phone_parse_status = normalize_phone(None)
         city_info = normalize_city(row.get("location"))
         rate_info = normalize_rate(row.get("rate"))
 
@@ -109,6 +112,7 @@ def build_gig_worker_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]
             "raw_city": row.get("location"),
             "normalized_email": email,
             "normalized_phone": None,
+            "phone_parse_status": phone_parse_status,
             "normalized_city": city_info["normalized_city"],
             "match_region": city_info["match_region"],
             "rate_raw": rate_info["raw"],
@@ -124,7 +128,7 @@ def build_gig_worker_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]
 def build_cbnexus_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]]:
     out = []
     for row in rows:
-        phone = normalize_phone(row.get("Phone Number"))
+        phone, phone_parse_status = normalize_phone(row.get("Phone Number"))
         city_info = normalize_city(row.get("City"))
 
         sr = SourceRecord(
@@ -144,6 +148,7 @@ def build_cbnexus_records(rows: list[dict]) -> list[tuple[SourceRecord, dict]]:
             "raw_city": row.get("City"),
             "normalized_email": None,
             "normalized_phone": phone,
+            "phone_parse_status": phone_parse_status,
             "normalized_city": city_info["normalized_city"],
             "match_region": city_info["match_region"],
             "verified_normalized": _bool_to_int(normalize_verified(row.get("Verified"))),
@@ -237,7 +242,7 @@ def run():
         person_of_cluster[id(cluster)] = pid
         existing_persons.append(ExistingPerson(pid, anchor.raw_name, city_info["match_region"]))
 
-                # A 'single' cluster (no duplicates found) isn't really a "match" —
+        # A 'single' cluster (no duplicates found) isn't really a "match" —
         # it's this Naukri record establishing a new person on its own.
         # Log it as 'new_person' so match_log's CHECK constraint (and its
         # semantics) stay meaningful; only real duplicate clusters use
@@ -256,7 +261,6 @@ def run():
                 match_method=log_method,
                 outcome=log_outcome, evidence=cluster.evidence, reviewed=1,
             )
-
 
     naukri_clusters_safe = [c for c in naukri_clusters if c.outcome != "conflicting_identifier"]
 
