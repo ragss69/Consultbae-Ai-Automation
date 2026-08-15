@@ -1,69 +1,378 @@
-# Task 2 — Skill Category Auto-Tagger (n8n)
+# Task 2 — No-Code Skill Categorization Automation
 
-An n8n workflow that reads people from Task 1's merged output, uses an LLM (Gemini) to classify each person's skill set into one of six fixed categories, and writes the tagged result back to a Google Sheet — with full audit metadata and no duplicate rows on rerun.
+This task implements a **no-code skill categorization workflow using n8n**.
 
-## What it does
+The workflow takes the consolidated person-level data generated in Task 1, classifies each person's skills into **one fixed business category using Gemini**, validates the model output, and writes the results to a separate Google Sheets tab.
 
-- Reads person records (`person_id`, `display_name`, `skills_raw`, `city`, `source_count`) from a Google Sheet populated from Task 1's `persons_merged.csv`
-- For each person, classifies their combined skills into one of: **Web Development**, **Data / Analytics**, **Automation / AI**, **Design**, **Sales / Ops / Support**, or **Other**
-- Validates the LLM's output against the fixed category list — anything that doesn't match exactly is flagged rather than silently accepted or coerced
-- Handles people with no skill data at all without calling the model
-- Clears the output tab before every run, so re-running the workflow never produces duplicate rows
-- Writes each result back with audit fields: classification status, timestamp, run ID, model name, prompt version
+## Workflow Overview
 
-## Setup
-
-1. In Google Sheets, create two tabs in the same spreadsheet:
-   - **`ConsultBae_Persons`** (input) — columns: `person_id, display_name, skills_raw, city, source_count`, populated from Task 1's `persons_merged.csv`
-   - **`ConsultBae_Persons_Tagged`** (output) — columns: `person_id, display_name, skills_raw, skill_category, classification_status, classified_at, workflow_run_id, model_name, prompt_version`
-2. Import `task2_flow.json` into n8n (Workflows → Import from File).
-3. Connect your Google Sheets credential and your Gemini API credential to the respective nodes.
-4. Point the Read/Clear/Append nodes at your spreadsheet ID and the two tab names above.
-5. Run via the Manual Trigger node.
-
-## How it works
-
-```mermaid
-flowchart TD
-    A["Manual Trigger"] --> B["Clear output tab"]
-    B --> C["Read rows from input tab"]
-    C --> D["Loop over items"]
-    D --> E{"skills_raw empty?"}
-    E -->|"yes"| F["Set: category=Other, status=missing_skills"]
-    E -->|"no"| G["Gemini: classify skill category"]
-    G --> H["Normalize model output"]
-    H --> I{"Matches one of 6 categories?"}
-    I -->|"yes"| J["status=valid"]
-    I -->|"no"| K["category=raw text, status=invalid_model_output"]
-    F --> L["Merge"]
-    J --> L
-    K --> L
-    L --> M["Attach audit fields: person_id, classified_at, run_id, model, prompt_version"]
-    M --> N["Append row to output tab"]
-    N --> D
+```text
+Task 1 person export
+        ↓
+Google Sheets input
+        ↓
+n8n Manual Trigger
+        ↓
+Read people
+        ↓
+Validate input & handle missing skills
+        ↓
+Classify skills with Gemini
+        ↓
+Validate category
+        ↓
+Write tagged results to Google Sheets
 ```
 
-## Key decisions
+The exported n8n workflow is the primary deliverable:
 
-- **Fixed input/output schema.** Column names are locked (`person_id, display_name, skills_raw, city, source_count`) regardless of what Task 1's CSV originally called them, so the workflow never depends on informal naming.
-- **`skills_raw` is pre-merged across sources.** It comes from Task 1's `persons_merged.csv`, which already combines a person's skills across all files they appear in — Task 2 assumes this is done, not something it does itself.
-- **No blind trust in LLM output.** The model's response is normalized and checked against the exact list of 6 allowed categories. A non-matching response is stored as-is under `invalid_model_output`, not silently defaulted to `Other` — so bad outputs stay visible and auditable.
-- **Empty skill data skips the model entirely.** An `IF` node checks for empty `skills_raw` before the Gemini call and deterministically assigns `Other` / `missing_skills` — avoids wasting a model call on data that can't be classified anyway.
-- **Clean rebuild on every run.** The output tab is cleared before classification starts, so rerunning the workflow never leaves stale or duplicate rows from a previous run.
-- **Full audit trail.** Every row carries `classified_at`, `workflow_run_id`, `model_name`, and `prompt_version`, so any run's results can be traced back to exactly how they were produced.
-- **Google Sheets is the input/output adapter, not a file-ingestion pipeline.** The sheet is populated once, manually, from Task 1's export — this workflow classifies what's in the sheet, it doesn't watch for or ingest new files.
-- **LLM chosen for practicality, not superior accuracy.** Gemini is used as a constrained classification step (fixed categories, single-word output) — this is a pragmatic use of an LLM for a fuzzy categorization task, not a claim that it outperforms a rules-based classifier.
-
-## Files
-
+```text
+workflow/
+└── consultbae_skill_categorization.json
 ```
+
+---
+
+## Why Use an LLM?
+
+The Task 1 output contains heterogeneous skill combinations, for example:
+
+* `n8n, LangChain, REST APIs, MongoDB, SQL`
+* `SQL, Python, JavaScript, Docker`
+
+Rule-based keyword matching would require many overlapping conditions because individual skills can belong to multiple categories.
+
+Gemini is therefore used as a **constrained classification step**. The model must select exactly one category from a predefined list.
+
+> **Important:** The LLM is used only for skill categorization. Person identity is inherited from Task 1 through `person_id`.
+
+---
+
+## Categories
+
+Each person is assigned exactly **one dominant category**.
+
+| Category                  | Description                                                           |
+| ------------------------- | --------------------------------------------------------------------- |
+| **Web Development**       | Frontend, backend, APIs, web frameworks, and application development  |
+| **Data / Analytics**      | SQL, Pandas, statistics, reporting, analytics, and data engineering   |
+| **Automation / AI**       | Workflow automation, n8n, Zapier, AI, machine learning, and LangChain |
+| **Design**                | UI/UX, Figma, Adobe, visual design, branding, and related skills      |
+| **Sales / Ops / Support** | Sales, customer support, CRM, recruiting, and business operations     |
+| **Other**                 | Insufficient, unclear, or unrelated skill evidence                    |
+
+The model is instructed to choose the **dominant category**, rather than returning multiple categories.
+
+---
+
+## Project Structure
+
+```text
 task2_automation/
-├── task2_flow.json     # exported n8n workflow
-└── README.md
+├── input/
+│   └── persons_for_task2.csv
+│       └── Task 1 person-level input
+│
+├── workflow/
+│   └── consultbae_skill_categorization.json
+│       └── Exported n8n workflow
+│
+├── reports/
+│   └── sample_tagged_output.csv
+│       └── Sample/exported output
+│
+├── README.md
+└── DECISIONS.md
 ```
 
-## Known limitations
+The **n8n workflow JSON is the source of truth** for the automation.
 
-- Category boundaries can be ambiguous for people with a broad skill mix — the prompt asks the model to pick the *dominant* theme, but this is inherently judgment-based.
-- Classification quality depends on Gemini's output; `invalid_model_output` rows need manual review rather than being auto-corrected.
-- This is a one-shot classification run, not a live pipeline — new people need to be re-added to the input sheet and the workflow re-run manually.
+---
+
+## Input Contract
+
+The workflow reads the Task 1 person-level export from Google Sheets.
+
+### Required fields
+
+| Field          | Purpose                                            |
+| -------------- | -------------------------------------------------- |
+| `person_id`    | Stable canonical identifier from Task 1            |
+| `display_name` | Human-readable name                                |
+| `skills_raw`   | Combined skill information used for classification |
+
+Optional fields such as `city`, `match_status`, and `source_count` may also be present.
+
+The workflow assumes Task 1 has already consolidated records so that there is **at most one row per `person_id`**.
+
+---
+
+## Google Sheets Setup
+
+Create a Google Sheets file with two tabs.
+
+### Input
+
+**Tab:** `ConsultBae_Persons`
+
+Minimum headers:
+
+```text
+person_id
+display_name
+skills_raw
+```
+
+Populate this tab using the Task 1 person-level export.
+
+### Output
+
+**Tab:** `ConsultBae_Persons_Tagged`
+
+Recommended headers:
+
+```text
+person_id
+display_name
+skills_raw
+skill_category
+classification_status
+classified_at
+workflow_run_id
+model_name
+prompt_version
+```
+
+Keeping the output separate ensures that the original Task 1 data remains unchanged and auditable.
+
+---
+
+## Workflow Steps
+
+### 1. Manual Trigger
+
+The workflow starts with an n8n **Manual Trigger**.
+
+This was chosen because it is:
+
+* Simple and reliable for a batch assignment
+* Easy to demonstrate during a screen recording
+* Free from unnecessary webhook or scheduling configuration
+
+A Schedule Trigger could be added for periodic execution in a production version.
+
+### 2. Read Input
+
+The Google Sheets node reads records from:
+
+```text
+ConsultBae_Persons
+```
+
+Each person is processed individually.
+
+### 3. Validate Input
+
+The workflow checks for:
+
+* `person_id`
+* `display_name`
+* `skills_raw`
+
+If `skills_raw` is missing, the record **does not call Gemini**.
+
+Instead:
+
+```text
+skill_category = Other
+classification_status = missing_skills
+```
+
+This avoids unnecessary LLM calls when there is no classification evidence.
+
+### 4. Gemini Classification
+
+Gemini receives the person's skill information and is instructed to:
+
+1. Select exactly one allowed category.
+2. Use the predefined category definitions.
+3. Select the dominant category.
+4. Return only the exact category name.
+5. Return `Other` when there is insufficient evidence.
+
+The original identity fields are preserved alongside the model output.
+
+### 5. Validate Model Output
+
+The model response is normalized and checked against the six allowed categories.
+
+Valid responses are accepted.
+
+Unexpected responses are marked:
+
+```text
+classification_status = invalid_model_output
+```
+
+The invalid response is retained rather than silently converting it to `Other`, making the workflow auditable.
+
+### 6. Write Results
+
+The final records are written to:
+
+```text
+ConsultBae_Persons_Tagged
+```
+
+Each output row contains the classification and relevant execution metadata.
+
+`person_id` maintains the connection between the Task 1 canonical person and the Task 2 classification.
+
+---
+
+## Rerun Behavior
+
+The workflow uses a **full-refresh approach**.
+
+Before a new classification run, the output is cleared/rebuilt so that rerunning the workflow does not append duplicate results.
+
+This ensures:
+
+* Task 1 input remains untouched.
+* Task 2 always represents the latest complete run.
+* Repeated executions do not create duplicate classifications.
+
+If this is later converted to an incremental workflow, `person_id` should be used as the logical key for upserts.
+
+---
+
+## Running the Workflow
+
+### 1. Prepare the Input
+
+Import the Task 1 export into:
+
+```text
+ConsultBae_Persons
+```
+
+Ensure these columns exist:
+
+```text
+person_id
+display_name
+skills_raw
+```
+
+### 2. Prepare the Output
+
+Create:
+
+```text
+ConsultBae_Persons_Tagged
+```
+
+Add the required output headers.
+
+### 3. Import the Workflow
+
+Open n8n and import:
+
+```text
+workflow/consultbae_skill_categorization.json
+```
+
+Then configure:
+
+* Google Sheets credentials
+* Input spreadsheet/tab
+* Output spreadsheet/tab
+* Gemini credentials
+
+**Credentials and API keys are not committed to the repository.**
+
+### 4. Execute
+
+Run the workflow using the **Manual Trigger**.
+
+Verify that:
+
+* Input rows are read correctly.
+* People with skills are sent to Gemini.
+* Missing skills are handled without an LLM call.
+* Gemini responses are validated.
+* Output rows are written successfully.
+* `person_id` is preserved.
+
+---
+
+## Example Output
+
+| person_id | display_name | skills_raw                      | skill_category   | classification_status |
+| --------- | ------------ | ------------------------------- | ---------------- | --------------------- |
+| `p001`    | Tanvi Gupta  | n8n, LangChain, REST APIs, SQL  | Automation / AI  | valid                 |
+| `p002`    | Amit Agarwal | SQL, Python, JavaScript, Docker | Data / Analytics | valid                 |
+| `p003`    | Example User | —                               | Other            | missing_skills        |
+
+The exact classification depends on the skills present in the input.
+
+---
+
+## Key Design Decisions
+
+* **Fixed schema:** The workflow relies on standardized fields such as `person_id`, `display_name`, and `skills_raw`.
+* **Pre-merged skills:** `skills_raw` is already consolidated across sources by Task 1; Task 2 only performs classification.
+* **Constrained LLM:** Gemini can only select from six predefined categories.
+* **No blind trust in model output:** Responses are validated before being written.
+* **Deterministic missing-data handling:** Empty `skills_raw` skips Gemini and receives `Other / missing_skills`.
+* **Full-refresh execution:** The output is rebuilt on each run to prevent duplicate classifications.
+* **Auditability:** Classification metadata such as `classified_at`, `workflow_run_id`, `model_name`, and `prompt_version` can be retained for traceability.
+* **Google Sheets as an adapter:** The sheet is manually populated from Task 1 rather than acting as an automated file-ingestion pipeline.
+* **LLM for practicality:** Gemini is used because skill categorization can involve ambiguous and overlapping skills; this is not a claim that an LLM is universally more accurate than rules.
+
+---
+
+## Validation Checklist
+
+Before submission, verify:
+
+* [ ] Workflow is implemented in n8n.
+* [ ] Workflow JSON is exported and committed.
+* [ ] Input comes from the Task 1 person-level output.
+* [ ] `person_id` is preserved.
+* [ ] Only the six allowed categories can be returned.
+* [ ] Missing skills are handled without an LLM call.
+* [ ] Invalid model outputs are detected.
+* [ ] Rerunning does not create duplicate rows.
+* [ ] Results are written to a separate output sheet.
+* [ ] Workflow execution is demonstrated in the screen recording.
+* [ ] Credentials/API keys are excluded from the repository.
+
+---
+
+## Known Limitations
+
+* Category boundaries can be ambiguous for people with broad skill sets.
+* Classification quality depends on the LLM's judgment.
+* Invalid model outputs require manual review.
+* Only one dominant category is stored per person.
+* The workflow is manually triggered rather than a live ingestion pipeline.
+* It is designed for a small batch and does not include production-scale queueing or rate-limit orchestration.
+* New people require the input sheet to be updated and the workflow to be run again.
+
+---
+
+## Future Improvements
+
+A production version could add:
+
+* Automated Google Drive or webhook triggers
+* Incremental processing
+* Upserts based on `person_id`
+* Retry handling for transient Gemini failures
+* Rate-limit management
+* Human review for uncertain classifications
+* Classification history
+* Confidence scores and supporting skill evidence
+
+These features were intentionally excluded to keep the assignment **simple, explainable, and focused on the core automation**.
