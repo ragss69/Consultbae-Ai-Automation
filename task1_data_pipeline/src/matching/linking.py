@@ -29,7 +29,7 @@ human review.
 from dataclasses import dataclass
 from typing import Optional
 
-from task1_data_pipeline.src.matching.grouping import Cluster, SourceRecord
+from .grouping import Cluster, SourceRecord
 
 
 @dataclass

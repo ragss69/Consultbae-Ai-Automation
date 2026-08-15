@@ -27,7 +27,31 @@ def reset_database(db_path: Path, schema_path: Path) -> sqlite3.Connection:
     """Deletes any existing DB file and rebuilds from schema.sql. Used at the
     start of pipeline.py so every run is fully reproducible from data/raw/."""
     if db_path.exists():
-        db_path.unlink()
+        try:
+            db_path.unlink()
+        except PermissionError:
+            # File is locked by another process. Attempt a best-effort fallback:
+            # 1) Try opening the DB and dropping all tables so the schema can be
+            #    recreated. 2) If that fails, surface a helpful error.
+            try:
+                conn_tmp = sqlite3.connect(db_path)
+                cur = conn_tmp.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = [r[0] for r in cur.fetchall()]
+                for t in tables:
+                    conn_tmp.execute(f"DROP TABLE IF EXISTS {t}")
+                conn_tmp.commit()
+                conn_tmp.close()
+                try:
+                    db_path.unlink()
+                except Exception:
+                    # If we still can't remove the file, proceed — get_connection
+                    # may still open it for use (best-effort).
+                    pass
+            except Exception as e:
+                raise PermissionError(
+                    f"Cannot remove or reset database file {db_path!s}: {e}. "
+                    "Close any program holding the file (DB browser, previous run) and retry."
+                )
     conn = get_connection(db_path)
     init_schema(conn, schema_path)
     return conn

@@ -19,7 +19,7 @@ It exists purely to turn pipeline.py's output into evidence.
 import csv
 from pathlib import Path
 
-from task1_data_pipeline.src.db.db import get_connection
+from .db.db import get_connection
 
 DB_PATH = Path("data/processed/consultbae.db")
 OUT_DIR = Path("data/processed/reports")

@@ -24,7 +24,7 @@ from typing import Optional
 
 from rapidfuzz import fuzz
 
-from task1_data_pipeline.src.matching.grouping import SourceRecord
+from .grouping import SourceRecord
 
 # Minimum name similarity to even be considered a "candidate" worth
 # showing to a reviewer. Documented, not tuned to a specific test case —
