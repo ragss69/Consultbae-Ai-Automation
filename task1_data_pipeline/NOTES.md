@@ -1,8 +1,7 @@
 # ConsultBae Assignment — Design Decisions & Trade-offs
 
-Purpose: a running log of every non-trivial decision made during this assignment,
-why it was made, what was rejected, and where real friction occurred — so I can
-defend any part of this solution live.
+Purpose: a running log of every non-trivial decision made during this task,
+why it was made, what was rejected, and where real friction occurred.
 
 ---
 

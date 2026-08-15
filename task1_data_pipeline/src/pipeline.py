@@ -32,9 +32,11 @@ from .db.db import (
     insert_person, link_record_to_person, insert_match_log,
 )
 
-RAW_DIR = Path("data/raw")
-DB_PATH = Path("data/processed/consultbae.db")
-SCHEMA_PATH = Path("src/db/schema.sql")
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+
+RAW_DIR = PROJECT_DIR / "data" / "raw"
+DB_PATH = PROJECT_DIR / "data" / "processed" / "consultbae.db"
+SCHEMA_PATH = PROJECT_DIR / "src" / "db" / "schema.sql"
 
 
 # ---------------------------------------------------------------------------

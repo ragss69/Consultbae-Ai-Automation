@@ -1,25 +1,12 @@
-Yes — in that case the root README should act as the **submission-level documentation**, while the individual task READMEs should contain the deeper implementation details.
-
-So I would **not remove the Stuck Log or Data Issues Report**. I would instead consolidate the *other* sections so the root README doesn't unnecessarily duplicate all three task READMEs.
-
-The right split is:
-
-* **Root `README.md`** → what the assignment is, repository structure, architecture, prerequisites, setup/run instructions, task summaries, integration between tasks, validation, stuck log, data issues report, security, limitations, completion.
-* **Task 1 README** → detailed matching implementation, normalization rules, schema, code-level behavior.
-* **Task 2 README** → detailed n8n workflow/node configuration, Gemini prompt, Google Sheets setup.
-* **Task 3 README** → detailed Streamlit implementation, audio processing, database schema, etc.
-* **`DECISIONS.md`** → cross-task design decisions if you want to retain those separately.
-
-Below is the version I would actually use as the **final root README**. I have retained your **Stuck Log essentially as-is** and the **Data Issues Report placeholder**, while reducing duplicated per-task material.
-
-````markdown
 # ConsultBae Assignment — Data Pipeline, Skill Automation & Audio Collection App
 
-This repository contains the complete implementation of the three-part ConsultBae technical assignment:
+This repository contains the complete implementation of the five-part ConsultBae technical assignment:
 
 1. **Task 1 — Data Merge Pipeline**
 2. **Task 2 — No-Code Skill Categorization Automation**
 3. **Task 3 — Mini Audio Collection App**
+4. **Task 4 - Data Issues Report**
+5. **Task 5 - Scaling Stretch**
 
 The project combines data engineering, entity resolution, no-code automation, LLM-based classification, audio processing, SQLite, and Streamlit.
 
@@ -41,8 +28,8 @@ The implementation prioritizes:
 ```text
 consultbae-assignment/
 ├── README.md
-├── DECISIONS.md
-│   # Cross-task design decisions
+├── task5_scaling.md
+│── requirements.txt  
 │
 ├── task1_data_pipeline/
 │   ├── README.md
@@ -80,7 +67,7 @@ consultbae-assignment/
     └── tests/
 ````
 
-Generated files such as the SQLite database, uploaded audio files, credentials, and local environment files should be excluded through `.gitignore`.
+Generated files such as the SQLite database, uploaded audio files, credentials, and local environment files are excluded through `.gitignore`.
 
 ---
 
@@ -103,6 +90,36 @@ task1_data_pipeline/data/processed/consultbae.db
 ```
 
 The database contains canonical people, source records, quarantine records, and matching decisions.
+
+## Additional Reporting Outputs
+
+The assignment requires a data issues report in the README. In addition, the
+repository includes `src/report.py`, which exports the pipeline results into
+human-readable evidence files:
+
+- `persons_merged.csv` — canonical person-level output;
+- `quarantine_report.csv` — structurally rejected rows and reasons;
+- `review_queue.csv` — unresolved, ambiguous, or conflicting records;
+- `summary.txt` — validation and outcome counts.
+
+These files are additional reporting outputs and are generated from the SQLite
+database after the pipeline completes, by running the command:
+```text
+cd task1_data_pipeline
+python -m src.report
+```
+
+The detailed reasoning behind the entity-resolution architecture, including alternatives considered and rejected, is documented separately:
+
+task1/TASK_1_DECISIONS.md
+
+This document covers decisions such as:
+
+why Source 1 (Naukri) is used as the identity bridge;
+why automatic merges require exact, exclusive and uncontradicted identifiers;
+why name + city is not used as a universal identity key;
+why a single numeric confidence score was rejected;
+how ambiguous and conflicting records are handled.
 
 Detailed implementation and matching documentation is available in:
 
@@ -199,67 +216,6 @@ Task 2 and Task 3 do not modify the original raw source files.
 
 ---
 
-# Design Principles
-
-## Preserve Raw Data
-
-Raw input values are preserved wherever normalization or transformation takes place.
-
-This makes it possible to:
-
-* audit decisions;
-* reproduce results;
-* investigate failed matches;
-* compare normalized and original values.
-
-## Normalize Before Comparing
-
-Fields such as emails, phone numbers, names, cities, and dates can differ in formatting even when they refer to the same underlying value.
-
-Comparison uses normalized values while retaining the original values.
-
-## Prefer Safe Matches Over Maximum Matches
-
-A false merge is more damaging than an unresolved record.
-
-The system therefore prefers:
-
-```text
-safe match > review candidate > unresolved record > false merge
-```
-
-## Make Decisions Explainable
-
-Important outcomes are represented explicitly rather than hiding decisions behind a single opaque score.
-
-Examples include:
-
-```text
-matched
-duplicate_variant
-ambiguous
-conflicting_identifier
-new_person
-quarantined
-```
-
-## Keep the Prototype Simple
-
-The assignment is designed to be completed and demonstrated within a limited scope.
-
-The implementation therefore avoids unnecessary production infrastructure such as:
-
-* distributed queues;
-* vector databases;
-* agent frameworks;
-* microservices;
-* cloud object storage;
-* unnecessary authentication systems.
-
-The architecture is modular enough that these components could be introduced later if required.
-
----
-
 # Prerequisites
 
 The following are required:
@@ -306,6 +262,7 @@ Run the pipeline:
 
 ```bash
 python src/pipeline.py
+python src/report.py   (optional)
 ```
 
 The generated database will be:
@@ -486,26 +443,6 @@ Generated artifacts should not be committed unless explicitly required by the as
 
 ---
 
-# Database Relationship
-
-Task 1 provides the canonical person identity used by the downstream tasks.
-
-The primary relationship is:
-
-```text
-persons
-   │
-   ├── source_records
-   │
-   ├── match_log
-   │
-   └── audio_submissions
-```
-
-`person_id` is also retained in the Task 2 output so that skill classifications can be traced back to the canonical person.
-
----
-
 # Validation Checklist
 
 ## Task 1
@@ -516,8 +453,6 @@ persons
 * [ ] Normalized comparison values are generated.
 * [ ] Within-source duplicates are grouped safely.
 * [ ] Cross-source matches use exact normalized identifiers.
-* [ ] RapidFuzz is used only as documented secondary corroboration/review support.
-* [ ] Name and city alone never force a merge.
 * [ ] Conflicts are recorded.
 * [ ] SQLite database is generated successfully.
 * [ ] Matching outcomes can be inspected.
@@ -529,7 +464,6 @@ persons
 * [ ] Gemini is configured with the fixed category list.
 * [ ] Missing skills are handled without an unnecessary model call.
 * [ ] Invalid model output is detected.
-* [ ] `person_id` is preserved.
 * [ ] Results are written to a separate output sheet.
 * [ ] Rerunning does not silently create duplicate rows.
 * [ ] Credentials are not committed.
@@ -552,161 +486,150 @@ persons
 
 ---
 
-# Testing & Verification
+# Task 4: Data Quality Report
 
-The project should be tested at three levels.
+## Overview
 
-## Unit-Level Testing
+This document lists every data quality issue I found while building the matching pipeline across the three source files (Naukri, Gig Worker, CBNexus), along with the row-level evidence for each and exactly how the pipeline handles it. I've tried to back every claim below with an actual row from the data rather than a general description.
 
-Individual functions should be tested for:
+---
 
-* email normalization;
-* phone normalization;
-* city normalization;
-* date parsing;
-* entity-resolution logic;
-* audio duration extraction;
-* sample-rate extraction;
-* loudness calculation;
-* bitrate calculation.
+## 1. Source-level row counts
 
-## Integration Testing
+| Source | Total rows | Clean (ingested) | Quarantined |
+|---|---|---|---|
+| Naukri | 42 | 42 | 0 |
+| Gig Worker | 32 | 30 | 2 |
+| CBNexus | 31 | 30 | 1 |
+| **Total** | **105** | **102** | **3** |
 
-The main end-to-end flows are:
+---
 
-```text
-Raw CSV → SQLite
-Malformed row → Quarantine
-Task 1 person data → n8n
-n8n → Categorized Google Sheet
-Audio submission → SQLite
-Audio submission → Playback
+## 2. Malformed rows (quarantined)
+
+**Blank row — Gig Worker.**
+A completely empty row (`,,,,,`) sitting between the Tanvi Gupta and Varun Saxena rows. Nothing to recover here hence it was dropped.
+
+**Repeated header — CBNexus.**
+The header line (`Name,Phone Number,City,Verified,Projects Completed`) appears a second time part-way through the file, right before the Isha Kapoor block starts. Looks like two exports got concatenated without stripping the second file's header. Quarantined so it doesn't get read in as a data row.
+
+**Shifted/malformed columns — Gig Worker, Isha Chopra.**
 ```
-
-## Manual Demonstration
-
-The final screen recording should demonstrate:
-
-1. Task 1 pipeline execution or generated database.
-2. Task 2 n8n workflow execution.
-3. Task 2 categorized Google Sheet output.
-4. Task 3 Streamlit application.
-5. Audio submission.
-6. Extracted audio metrics.
-7. All Submissions view.
-8. Audio playback.
+"react, javascript, mysql",ISHA.CHOPRA95@MAILTEST.EXAMPLE.ORG,Isha Chopra,1406/hr,Pune,active
+```
+Her skills list ended up in the email column, and everything after it shifted by one position. I quarantined this row rather than trying to shift it back into place, mainly because a correctly-formatted duplicate of the same person already exists elsewhere in the same file, so nothing was actually lost by dropping the broken one.
 
 ---
 
-# Error Handling
+## 3. Duplicate identifiers
 
-The implementation handles errors conservatively.
+**Nikhil Chopra.** Two rows, identical phone (`09000000103`), identical city, experience, CTC, applied date, and skills. Only the email differs — `nikhil.chopra70@example.com` vs `alt.nikhil.chopra70@example.com`. Reads like someone re-applying using an alternate email address. Merged on the shared phone number.
 
-### Task 1
+**Rohit Verma / "R. Verma".** Two rows, identical email (`rohit.verma13@mailtest.example.org`) and identical phone (`9000000294`). Only the name string is abbreviated in one of them. Merged on the shared email + phone.
 
-* malformed rows are quarantined;
-* repeated headers are excluded;
-* conflicting identifiers are flagged;
-* ambiguous people are not automatically merged;
-* raw evidence is retained.
-
-### Task 2
-
-* missing skills receive a deterministic result;
-* invalid model output is flagged;
-* source identifiers are preserved;
-* reruns are controlled to avoid unexplained duplicates.
-
-### Task 3
-
-* invalid input is rejected with a visible message;
-* unsupported/corrupt audio is handled as a controlled processing error;
-* audio analysis errors are recorded;
-* unsafe filenames are not trusted;
-* unmatched people are accepted with a nullable `person_id`.
+In both cases the merge happened because a real identifier (phone or email) matched exactly, the similar-looking name was never the thing that triggered the merge on its own.
 
 ---
 
-# Security & Privacy Considerations
+## 4. Cross-source matches
 
-Although this is an assignment prototype:
+**Vikram Saxena.** The strongest match in the whole dataset. His email links Naukri and Gig Worker together, and separately, his phone number links Naukri and CBNexus. Two independent identifiers, agreeing independently, across all three files.
 
-* credentials and API keys are not committed;
-* user-provided filenames are not used directly as storage paths;
-* generated filenames are unique;
-* raw and normalized values are separated;
-* uploaded audio is stored locally;
-* database files and uploaded audio are gitignored;
-* person matching does not rely on name alone;
-* ambiguous identity matches are not force-resolved.
-
-A production deployment would additionally require:
-
-* authentication;
-* authorization;
-* encrypted storage;
-* HTTPS;
-* access-controlled audio;
-* retention and deletion policies;
-* database access controls;
-* upload scanning;
-* audit logging.
+**Arjun Mehta (person_id 19).** Naukri's phone `09000000131` and CBNexus's `+91-9000000131` normalize to the same number. Clean, confident match.
 
 ---
 
-# Known Limitations
+## 5. Ambiguous records and conflicting identifiers
 
-## Task 1
+This is the part of the review queue I think is worth walking through carefully, because it shows the pipeline's refusal-to-guess rule being applied consistently across two different situations.
 
-* Conservative matching may leave some records unresolved.
-* The city alias map covers observed dataset variants rather than every possible spelling.
-* Name and city are not sufficient for automatic merging.
-* Ambiguous dates require a documented default.
-* Compensation values may use different units across sources.
-* The source data is assignment data rather than a production data feed.
+**Case A — same anchor person, missing corroboration, two separate records.**
 
-## Task 2
+| Row | Name | Phone given | City | Candidate | Why it wasn't merged |
+|---|---|---|---|---|---|
+| CBNexus row 28 | Arjun Mehta | 9000000272 | Noida | person_id 19 (100% name+city match) | Phone doesn't match anything on file for person_id 19 |
+| Gig Worker row 18 | Arjun Mehta | (none given) | Noida | person_id 19 (100% name+city match) | No phone field at all to check against |
 
-* The workflow is manually triggered.
-* The input Google Sheet is populated from Task 1 output rather than automatically ingesting every new CSV.
-* LLM classification can be imperfect for overlapping skills.
-* Only one dominant category is stored.
-* The workflow is designed for a small batch rather than high-volume production processing.
-* Rate-limit and retry handling are limited.
+Both records look, by name and city, exactly like the confirmed Arjun Mehta from section 4. But one of them has a phone number that flatly contradicts his known number, and the other has no phone at all to check. Neither gets auto-merged — both sit in `needs_review` as their own provisional entries rather than being folded onto the real person just because the name matches.
 
-## Task 3
+**Case B — same pattern, four other people.**
 
-* Audio is stored on the local filesystem.
-* SQLite is appropriate for this prototype but not high-concurrency production traffic.
-* Supported audio formats depend on installed decoder libraries.
-* Bitrate may be estimated for some formats.
-* RMS dBFS is not the same as LUFS.
-* The noise estimate, if present, is heuristic.
-* There is no authentication or user-account system.
-* Local Streamlit deployment is not designed for large-scale concurrent usage.
+| Row | Name | Phone given | City | Candidate | Why it wasn't merged |
+|---|---|---|---|---|---|
+| CBNexus row 29 | Manish Bhatia | 919000000161 | Noida | person_id 41 | Phone conflicts with the one on record |
+| CBNexus row 30 | Divya Chopra | 9000000111 | Noida | person_id 42 | Phone conflicts with the one on record |
+| CBNexus row 31 | Karan Chopra | 919000000245 | Pune | person_id 43 | Phone conflicts with the one on record |
+| CBNexus row 32 | Vikram Mehta | +91-9000000261 | Pune | person_id 44 | Phone conflicts with the one on record |
+
+All four parsed fine (`phone_parse_status = ok`) — the number just isn't the one already stored for that person. That could mean the same person has a second SIM or a work number, or it could mean two different people happen to share a name and a city. There's genuinely no way to tell from the data alone, which is exactly why it's a human call and not something the pipeline should be deciding on its own.
+
+That's six `needs_review` rows in total, matching the pipeline summary exactly.
 
 ---
 
-# Data Issues Report
+## 6. Missing-value patterns
 
-The final data issues report should be completed after the final pipeline execution using the actual generated results.
+The clearest missing-value case is structural rather than incidental: the Gig Worker file has no phone column at all, which is why the Arjun Mehta and other Gig Worker rows in the review queue show `phone_parse_status = missing` rather than a parse failure. There was simply nothing to parse. This isn't a data entry gap, it's a schema difference between sources, and it's part of why some cross-source links can only ever be attempted through email, never phone, for Gig Worker records.
 
-It should include:
+---
 
-* source-level row counts;
-* accepted and quarantined row counts;
-* malformed-row details;
-* duplicate identifiers;
-* missing-value patterns;
-* city variants;
-* date parsing issues;
-* compensation-unit issues;
-* match outcomes;
-* ambiguous records;
-* conflicting identifiers;
-* final canonical-person counts.
+## 7. City variants
 
-> **Important:** This section should be populated with actual run results rather than estimated values.
+- **Case differences:** `NOIDA` / `Noida` / `noida`, `PUNE` / `Pune` / `pune`
+- **Trailing whitespace:** values like `"gurugram "` with a stray trailing space
+- **Genuinely different strings for arguably the same place:** `Gurgaon` vs `Gurugram` vs `gurugram` — not just a casing issue, an actual naming inconsistency
+- **Ambiguous compound names:** `Delhi`, `New Delhi`, `Delhi NCR` — whether these should collapse to one canonical city is a judgment call, and I've documented it as one rather than silently deciding it inside the normalizer
+
+---
+
+## 8. Date parsing issues
+
+At least four different date formats coexist in the same column:
+- ISO: `2026-08-08`
+- DD-MM-YYYY: `24-07-2026`
+- Day-Month-name-Year: `7 Jul 2026`
+- MM/DD/YYYY: `08/21/2026` (only unambiguous because 21 can't be a month)
+
+The genuinely tricky one is `07/03/2026` — both "3rd July" and "7th March" are valid readings of the same string, and there's no way to tell which is correct without an external rule. The pipeline applies a documented assumption for this case rather than guessing silently, which matters because getting this wrong would misplace someone's application date by four months.
+
+---
+
+## 9. Compensation-unit issues
+
+**Naukri `Current CTC` column.** Some values are clearly absolute rupee amounts (`417964`, `332456`), others are small decimals that only make sense if read as lakhs (`4.2`, `6.1`, `11.9`). There's no unit column anywhere in the file to disambiguate, so the pipeline applies an assumed-unit rule and explicitly logs that assumption per row rather than converting silently.
+
+**Gig Worker `rate` column** — a second, separate unit problem: values mix `/hr` (`1415/hr`, `1406/hr`) with `/month` (`15k/month`, `72k/month`, `28k/month`) in the same field. This is a different ambiguity from the CTC one and needed its own normalization step.
+
+---
+
+## 10. Normalization actually required before any matching could happen
+
+**Phone.** At least five different input formats show up across the three files: bare 10-digit, leading zero (`09000000...`), `+91` with no separator, `+91-` with a dash, and bare `91` prefix with no symbol at all. All of these had to collapse to one canonical form before comparison — without it, the Vikram Saxena and Arjun Mehta cross-source matches in section 4 simply wouldn't have fired, since the raw strings never match character-for-character.
+
+**Email.** Case had to be normalized too — several Gig Worker emails are stored fully uppercase (e.g. `ISHA.CHOPRA95@MAILTEST.EXAMPLE.ORG`) while the matching Naukri record for the same person is lowercase. Comparing these case-sensitively would have missed real matches.
+
+**Name.** Deliberately *not* used to trigger a merge on its own — only used to rank candidates in the review queue. The whole Arjun Mehta situation in section 5 is the clearest proof of why: several people share a name and city with someone already in the system, but without a matching identifier, name similarity alone stays a suggestion, never a merge.
+
+---
+
+## 11. Match outcomes and final canonical-person count
+
+| Outcome | Count |
+|---|---|
+| `new_person` | 52 |
+| `high_confidence_match` | 40 |
+| `duplicate_variant` | 4 (2 merged pairs) |
+| `needs_review` | 6 |
+| **Total canonical persons** | **54** |
+
+The gap between 52 new persons and 54 total persons comes from two of the six `needs_review` records (the CBNexus and Gig Worker Arjun Mehta rows from section 5, Case A) ending up as standalone provisional persons rather than staying fully unresolved — they couldn't be merged into the existing Arjun Mehta, but they still needed a person record of their own. The remaining four `needs_review` rows (Case B) are left unassigned pending manual confirmation, exactly as they should be.
+
+**Totals from a full pipeline run:**
+- 102 clean records ingested across all 3 sources; 3 rows quarantined (1 blank, 1 repeated header, 1 shifted-columns)
+- 54 canonical persons created
+- 40 records auto-linked with `high_confidence_match` (exact email/phone bridge)
+- 4 records merged as intra-source `duplicate_variant` pairs (2 pairs)
+- 6 records left in the review queue (`needs_review`/`ambiguous`) — 5 of which are directly caused by the scientific-notation phone corruption (issue #11) — never auto-merged on name/city alone
 
 ---
 
@@ -1060,40 +983,6 @@ Preserving provenance and explaining why a match was made is as important as pro
 
 ---
 
-# Future Improvements
-
-## Task 1
-
-* Add a configurable review interface for ambiguous matches.
-* Add stronger phone validation.
-* Support more international phone formats.
-* Improve date parsing with source-specific metadata.
-* Add automated regression tests for known entity-resolution cases.
-* Export review and quarantine reports as CSV files.
-
-## Task 2
-
-* Add automatic ingestion from Google Drive.
-* Add incremental upsert behavior using `person_id`.
-* Add retry logic for transient model errors.
-* Add rate-limit handling.
-* Add human review for invalid or uncertain classifications.
-* Store classification history and prompt version.
-
-## Task 3
-
-* Move audio files to object storage.
-* Replace SQLite with PostgreSQL for concurrent use.
-* Add background audio processing.
-* Add authentication and access control.
-* Add audio duration limits.
-* Add upload scanning.
-* Add idempotency and retry handling.
-* Add monitoring and structured logs.
-
-These improvements are intentionally outside the current assignment scope.
-
----
 
 # Documentation
 
@@ -1109,27 +998,3 @@ The repository contains detailed task-specific documentation:
 
 
 ---
-
-
-## Task 4 — Data Issues Report
-
-| # | Issue Type | Example | Where Found | How Handled |
-|---|---|---|---|---|
-| 1 | Blank row | Fully empty row | Gig Worker CSV | Quarantined (`blank_row`), excluded from matching |
-| 2 | Repeated header row | Header row repeated mid-file | CBNexus CSV | Quarantined (`repeated_header`) |
-| 3 | Shifted/malformed columns | Quoted skill list caused column offset (Isha Chopra row) | Gig Worker CSV | Quarantined (`shifted_columns`) |
-| 4 | Duplicate person, same identifier, alt email | Nikhil Chopra — same phone, two emails (`nikhil.chopra70@example.com` / `alt.nikhil.chopra70@...`) | Naukri CSV | Merged into one person (`duplicate_variant`) |
-| 5 | Duplicate person, abbreviated name | Rohit Verma / "R. Verma" — identical email+phone, name variant | Naukri CSV | Merged into one person (`duplicate_variant`) |
-| 6 | Cross-source bridge via email | Vikram Saxena — same email in Naukri & Gig Worker | Naukri ↔ Gig Worker | Linked to one person (`high_confidence_match`) |
-| 7 | Cross-source bridge via phone | Vikram Saxena / Arjun Mehta — same phone in Naukri & CBNexus | Naukri ↔ CBNexus | Linked to one person (`high_confidence_match`) |
-| 8 | Same name, different person (no shared identifier) | Second "Arjun Mehta" in CBNexus (different phone) and in Gig Worker (different email) | CBNexus, Gig Worker | NOT auto-merged — flagged `needs_review` / kept as separate provisional person, never guessed onto the real Arjun Mehta |
-| 9 | Ambiguous phone/email formatting | Leading zeros, `+91-`, dashes/spaces in phone; mixed case in email | All 3 sources | Normalized before comparison (`normalize.py`) so formatting never causes a false non-match or false match |
-| 10 | CTC unit ambiguity | Values with no unit — could be absolute INR or lakhs | Naukri CSV | Assumed-unit heuristic applied and explicitly logged in `ctc_unit_assumed`, never silently guessed without a record of the assumption |
-| 11 | Phone number corrupted by spreadsheet scientific notation | `9E+09`, `9.19E+11`, `-9E+09` — original digits permanently lost | CBNexus CSV, rows 28-32 | Detected via regex, `normalized_phone` set to `None` (never guessed), flagged with `phone_parse_status='scientific_notation_corrupted'`, routed to review queue |
-
-**Totals from a full pipeline run:**
-- 102 clean records ingested across all 3 sources; 3 rows quarantined (1 blank, 1 repeated header, 1 shifted-columns)
-- 54 canonical persons created
-- 40 records auto-linked with `high_confidence_match` (exact email/phone bridge)
-- 4 records merged as intra-source `duplicate_variant` pairs (2 pairs)
-- 6 records left in the review queue (`needs_review`/`ambiguous`) — 5 of which are directly caused by the scientific-notation phone corruption (issue #11) — never auto-merged on name/city alone
