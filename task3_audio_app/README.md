@@ -170,7 +170,7 @@ After submission, the application:
 8. Stores the submission in SQLite.
 9. Displays the resulting metrics and match status.
 
-![Display Audio Metrics](images/Screenshot%202026-08-16%20230021.png)
+![Screenshot 2026-08-16 230021](images/Screenshot%202026-08-16%20230021.png)
 
 ### All Submissions
 
@@ -190,7 +190,7 @@ The application lists previous submissions with:
 
 Stored recordings can be played directly from the application.
 
-![Display All submissions](images/Screenshot%202026-08-16%20230103.png)
+![Screenshot 2026-08-16 230103](images/Screenshot%202026-08-16%20230103.png)
 
 ---
 
