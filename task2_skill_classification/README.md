@@ -31,7 +31,7 @@ workflow/
 └── consultbae_skill_categorization.json
 ```
 
-![Screenshot 2026-08-16 224700](images/Screenshot%2026-08-16%224437.jpg)
+![n8n workflow](images/Screenshot%202026-08-16%20224437.jpg)
 
 ---
 
