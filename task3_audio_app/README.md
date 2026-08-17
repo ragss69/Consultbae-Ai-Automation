@@ -155,8 +155,8 @@ The submission form accepts:
 
 <!-- Images for demo -->
 
-![Screenshot 2026-08-16 224700](images/Screenshot%202026-08-16%20224700.jpg)
-![Screenshot 2026-08-16 230008](images/Screenshot%202026-08-16%20230008.jpg)
+![Streamlit page](images/Screenshot%202026-08-16%20224700.jpg)
+![Streamlit page - submitted](images/Screenshot%202026-08-16%20230008.jpg)
 
 After submission, the application:
 
@@ -170,7 +170,7 @@ After submission, the application:
 8. Stores the submission in SQLite.
 9. Displays the resulting metrics and match status.
 
-![Screenshot 2026-08-16 230021](images/Screenshot%202026-08-16%20230021.png)
+![Display Audio Metrics](images/Screenshot%202026-08-16%20230021.png)
 
 ### All Submissions
 
@@ -190,7 +190,7 @@ The application lists previous submissions with:
 
 Stored recordings can be played directly from the application.
 
-![Screenshot 2026-08-16 230103](images/Screenshot%202026-08-16%20230103.png)
+![Display All submissions](images/Screenshot%202026-08-16%20230103.png)
 
 ---
 
