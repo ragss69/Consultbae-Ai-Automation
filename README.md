@@ -753,38 +753,49 @@ I researched:
 
 I compared Python libraries that could decode audio and provide the required metrics.
 
-### Libraries Used
+How I approached it
 
-The implementation uses:
+I started by searching for how Python libraries handle:
 
-* `librosa` for loading and decoding audio;
-* `soundfile` for audio information such as subtype;
-* `numpy` for RMS, peak, and logarithmic calculations;
-* `hashlib` for SHA-256 file hashing and duplicate detection.
+audio duration + sample rate + bitrate + loudness
+RMS vs dBFS vs LUFS
+PCM vs compressed audio
+Python audio decoding
 
-I avoided adding more dependencies than necessary for the assignment.
+I compared librosa, soundfile, pydub and FFmpeg-based approaches.
 
-### Audio Processing Flow
+### Library Investigation and Tradeoffs
+
+Since audio processing was new to me, I first researched a few different Python-based approaches using documentation, examples, and LLM-assisted research. I compared them based on what I actually needed for this assignment: decoding uploaded/recorded audio, accessing the raw samples, extracting basic properties, calculating loudness, and keeping the implementation reasonably lightweight.
+
+| Library / Approach | Why it was relevant | Why it did / didn't fit my use case | Decision |
+|---|---|---|---|
+| **librosa** | High-level audio loading and analysis; gives access to decoded samples and sample rate and works well with NumPy | More than a simple metadata reader, but the access to actual audio samples was useful for calculating RMS-based loudness | **Chosen as the main audio loading/analysis library** |
+| **soundfile** | Lightweight audio I/O and useful file information such as sample rate, channels and subtype | Doesn't provide the higher-level analysis I needed by itself, but complemented `librosa` well | **Used alongside librosa** |
+| **pydub** | Simple API for loading, converting and manipulating audio files | Useful for general audio manipulation, but I wasn't building an editing/conversion application. It would also add another layer around FFmpeg | **Considered, then rejected** |
+| **FFmpeg** | Very broad codec and format support and useful when dealing with browser-generated audio | Strong option for decoding/conversion, but using it as the entire processing layer would introduce more system-level complexity than I needed for this prototype | **Used as supporting dependency rather than primary API** |
+| **NumPy** | Directly works with numerical audio samples and provides everything needed for RMS and logarithmic calculations | Cannot decode audio files itself, so it needs to be used after the audio has been loaded | **Used for signal calculations** |
+| **Mutagen / metadata-focused libraries** | Useful for reading metadata such as duration and bitrate from supported formats | Didn't solve the main problem of accessing decoded samples for the loudness calculation, and metadata availability varies across formats | **Not used** |
+
+The final responsibility split was therefore:
 
 ```text
-Audio input
-    ↓
-Validate submission
-    ↓
-Save file
-    ↓
-Decode audio
-    ↓
-Extract sample rate and duration
-    ↓
-Determine bitrate
-    ↓
-Calculate loudness
-    ↓
-Calculate optional noise estimate
-    ↓
-Store metadata and processing result
-```
+librosa
+    → load/decode audio and obtain samples + sample rate
+
+soundfile
+    → inspect audio information/subtype
+
+NumPy
+    → RMS and dBFS calculations
+
+FFmpeg
+    → supporting codec/format handling
+
+hashlib
+    → SHA-256 hashing for duplicate detection
+
+The main tradeoff I was trying to make was between format compatibility, implementation complexity, and having enough control over the actual audio signal. I initially looked for a single library that could handle everything, but the combination of librosa, soundfile and NumPy gave me clearer separation of responsibilities without adding libraries that I didn't actually need.
 
 ### Browser Recording
 
@@ -824,165 +835,109 @@ Understanding this distinction helped me choose appropriate libraries and make t
 
 ---
 
-## 3. Handling Bitrate Differences Across Audio Formats
+## 3. Learning Audio Processing in an Unfamiliar Technical Domain
 
-### Problem
+Audio processing was probably the least familiar part of the assignment for me. I had worked with Python/data processing before, but I had not previously had to deal with audio codecs, sampling rates, RMS, bitrate, etc.
 
-Bitrate was not equally straightforward for every audio format.
+### How I approached it
 
-For uncompressed PCM audio, the bitrate can be derived from sample rate, bits per sample, and number of channels. For other formats, the available metadata may not expose an exact encoded bitrate.
+I first broke down the requirement instead of trying to find one library that did everything. I searched things like:
 
-This made it unsafe to populate a bitrate field without also documenting how the value had been obtained.
+```text
+Python extract audio duration sample rate bitrate
+librosa vs pydub vs soundfile Python
+what is sample rate vs bitrate audio
+RMS loudness dBFS Python
+LUFS vs dBFS
+PCM bitrate calculation
+```
 
-### Investigation
+I also asked AI questions such as:
 
-I compared bitrate information across the audio files used during testing.
+> "For a small Streamlit audio collection app, which Python library would you use to extract duration, sample rate, bitrate and loudness, and what are the tradeoffs?"
+
+and then followed up with more specific questions when I didn't understand something rather than copying the first implementation.
+
+One thing I discovered from the `librosa` documentation was that `librosa.load()` normally resamples audio to 22050 Hz, but `sr=None` preserves the file's native sampling rate. That was important for this assignment because I needed to **report the submitted file's sample rate**, not silently analyse a resampled version. ([Librosa][1])
+
+That led me to use:
+
+```python
+librosa.load(file_path, sr=None, mono=False)
+```
+
+rather than accepting the default.
+
+### Library investigation
+
+I compared a few approaches before settling on the current combination:
+
+| Option        | What I found                                                                                                                          | Decision                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| **librosa**   | Convenient way to decode audio into samples and get the native sample rate; also gives me the signal needed for loudness calculations | **Chosen**                 |
+| **soundfile** | Useful for inspecting audio properties/subtypes and particularly useful for identifying PCM formats                                   | **Used alongside librosa** |
+| **pydub**     | Good high-level API for manipulation/conversion, but I didn't need its editing functionality for the required metrics                 | **Not needed**             |
+| **FFmpeg**    | Much broader format/codec support, but adds a system dependency and I didn't want it to become the main analysis API                  | **Supporting dependency**  |
+| **NumPy**     | Doesn't decode audio, but is ideal once I have the samples for RMS/peak calculations                                                  | **Used for calculations**  |
+
+The main reason I didn't try to make one library responsible for everything was that the requirements were actually different types of problems: decoding, metadata inspection and signal analysis.
+
+### The part that initially confused me: loudness
+
+I initially thought "loudness" meant I just needed another metadata field. While researching it, I came across **RMS, dBFS and LUFS**, which made me realize that I needed to define exactly what my application meant by loudness.
+
+For this prototype I decided to use RMS-based dBFS rather than trying to implement a full LUFS measurement.
+
+The implementation therefore does:
+
+```text
+audio samples
+     ↓
+RMS
+     ↓
+20 × log10(RMS)
+     ↓
+loudness_dbfs
+```
+
+I explicitly named the database field `loudness_dbfs` rather than `loudness_lufs` so that the measurement isn't overstated.
+
+### Bitrate was a separate decision
+
+Bitrate was where I spent the most time because I initially assumed it would be available directly from the file.
+
+I found that this isn't something I could safely treat identically for every format. I researched PCM bitrate and the difference between **uncompressed bitrate** and the average bitrate of compressed files.
 
 I considered:
 
-* reading bitrate directly from metadata;
-* calculating PCM bitrate from audio properties;
-* estimating average bitrate from file size and duration;
-* returning no value when bitrate could not be determined.
+* reading bitrate from metadata where available;
+* calculating it from sample rate, bit depth and channels;
+* estimating it from file size and duration;
+* leaving it blank when an exact value wasn't available.
 
-I also reviewed library documentation and used AI tools to compare the trade-offs between exact metadata and estimated values.
-
-### Final Solution
-
-The implementation uses two explicit methods:
+I ended up making the calculation format-aware:
 
 ```text
+PCM
+ ↓
+sample rate × bits/sample × channels
+ ↓
 uncompressed_pcm
+```
+
+For other formats where I couldn't establish an exact PCM bitrate:
+
+```text
+file size × 8 / duration
+ ↓
 average_estimated
 ```
 
-For uncompressed PCM:
+I also store the calculation method in `bitrate_method`. This was important because I didn't want an estimated value to look like an exact codec bitrate.
 
-```text
-bitrate =
-sample rate × bits per sample × number of channels
-```
-
-For other formats, the estimate is approximately:
-
-```text
-bitrate =
-file size × 8 / duration
-```
-
-The calculation method is stored alongside the bitrate.
-
-This prevents an estimated value from being presented as though it were an exact codec bitrate.
-
-### What I Learned
-
-A field can be technically populated while still being semantically misleading.
-
-The method used to derive a value is part of the data and should be preserved when different records may have different levels of precision.
+The main thing I took away from this was that I couldn't treat "audio properties" as one problem. I had to understand **what information came from the file, what required decoding, and what required analysing the actual signal** before choosing the implementation.
 
 ---
-
-## 4. Designing Conservative Entity Resolution for Messy People Data
-
-### Problem
-
-Task 1 required records from three different source systems to be consolidated into one canonical person table.
-
-The sources did not have a shared ID, and fields such as names, phones, emails, and cities varied in formatting.
-
-The central challenge was avoiding false-positive merges.
-
-### Investigation
-
-I profiled:
-
-* missing values;
-* duplicate emails;
-* duplicate phones;
-* formatting differences;
-* city variants;
-* source-specific fields;
-* possible cross-source links;
-* contradictory identifiers.
-
-I normalized identifiers before attempting matching.
-
-### Matching Decision
-
-I considered using one overall fuzzy score, but rejected it because arbitrary weights and thresholds would be difficult to defend.
-
-The final strategy used:
-
-```text
-Normalize identifiers
-        ↓
-Group within source
-        ↓
-Find exact identifiers
-        ↓
-Check uniqueness
-        ↓
-Use secondary name corroboration where required
-        ↓
-Detect conflicts
-        ↓
-Match / review / unresolved
-```
-
-RapidFuzz was used with `fuzz.token_sort_ratio` and the configured name threshold of `70` as a secondary corroboration check after an exact phone match.
-
-It was not used as unrestricted name-only matching.
-
-### Malformed Record
-
-The malformed record was in the Gig Workers CSV:
-
-```csv
-"react, javascript, mysql",ISHA.CHOPRA95@MAILTEST.EXAMPLE.ORG,Isha Chopra,1406/hr,Pune,active
-```
-
-The row was structurally displaced relative to:
-
-```text
-email_id, worker_name, rate, location, status, skill_tags
-```
-
-I considered:
-
-1. automatically shifting the values;
-2. dropping the row;
-3. quarantining it.
-
-I quarantined the row and preserved the raw data, source, row number, and reason.
-
-### Why
-
-The correct repair could not be proven safely. A clean Isha Chopra record already existed elsewhere, so automatically repairing the malformed row introduced more risk than value.
-
-### What I Learned
-
-Entity resolution should not maximize the number of matches at any cost.
-
-A good system distinguishes between:
-
-```text
-Strong evidence
-     ↓
-Safe match
-
-Weak evidence
-     ↓
-Review or unresolved
-
-Conflicting evidence
-     ↓
-Do not automatically merge
-```
-
-Preserving provenance and explaining why a match was made is as important as producing the final merged database.
-
----
-
 
 # Documentation
 

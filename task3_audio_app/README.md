@@ -153,6 +153,11 @@ The submission form accepts:
 * Browser recording or audio file upload
 * Submit action
 
+<!-- Images for demo -->
+
+![Screenshot 2026-08-16 224700](images/Screenshot%202026-08-16%20224700.jpg)
+![Screenshot 2026-08-16 230008](images/Screenshot%202026-08-16%20230008.jpg)
+
 After submission, the application:
 
 1. Validates the input.
@@ -164,6 +169,8 @@ After submission, the application:
 7. Extracts audio properties.
 8. Stores the submission in SQLite.
 9. Displays the resulting metrics and match status.
+
+![Screenshot 2026-08-16 230021](images/Screenshot%202026-08-16%20230021.png)
 
 ### All Submissions
 
@@ -182,6 +189,8 @@ The application lists previous submissions with:
 * Audio player
 
 Stored recordings can be played directly from the application.
+
+![Screenshot 2026-08-16 230103](images/Screenshot%202026-08-16%20230103.png)
 
 ---
 

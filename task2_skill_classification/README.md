@@ -31,6 +31,8 @@ workflow/
 └── consultbae_skill_categorization.json
 ```
 
+![n8n workflow](task2_skill_classification/images/Screenshot 2026-08-16 224437.jpg)
+
 ---
 
 ## Why Use an LLM?
